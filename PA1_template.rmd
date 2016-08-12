@@ -1,0 +1,98 @@
+
+## Load the data
+```{r, echo=TRUE}
+rawdata <- read.csv("activity.csv", header = T, stringsAsFactors = F)
+dim(rawdata)
+```
+
+## Transform the data
+```{r, echo=TRUE}
+ noNA <- rawdata[complete.cases(rawdata),]
+ dim(noNA)
+ ```
+ 
+## mean total number of steps taken per day
+ 
+ ```{r, echo=TRUE}
+ library(ggplot2)
+ ggplot(noNA, aes(as.factor(date),steps))+geom_bar(fill="green", stat="identity")+
+   xlab("Day") + ylab("Steps")+ggtitle("Histogram of the total number of steps taken each day")+
+   theme(axis.text.x = element_text(angle = 90, hjust = 2))
+   ```
+   
+## Calculate the mean of the total number of steps taken per day
+
+  ```{r, echo=TRUE}
+   meanFreq <- as.integer(mean(aggregate(steps~date,noNA, FUN=sum)$steps))
+   meanFreq
+ ```
+
+##  Calculate the median of the total number of steps taken per day
+```{r, echo=TRUE}
+ medianFreq <- median(aggregate(steps~date,noNA, FUN=sum)$steps)
+ medianFreq
+ ```
+ 
+ ##  What is the average daily activity pattern
+
+ ```{r, echo=TRUE}
+q2 <- aggregate(steps~interval, noNA, FUN=mean)
+plot(q2$steps ~ q2$interval, type="l", xlab="Date", ylab="Average Steps per Day (5-mins interval")
+```
+## Imputing missing values
+
+```{r, echo=TRUE}
+numNA <- nrow(rawdata) - nrow(noNA)
+imputedata <- rawdata
+meanNA <- aggregate(steps~interval,imputedata, FUN=mean)
+for(i in 1:nrow(imputedata)){
+  if(is.na(imputedata[i,c("steps")])){
+    imputedata[i,c("steps")] <- meanNA[meanNA$interval==imputedata[i,c("interval")], c("steps")]
+  }
+}
+ggplot(imputedata,aes(as.factor(date),steps))+geom_bar(fill="green", stat="identity")+xlab("Day") + ylab("Steps")+ggtitle("Histogram of the Total Number of Steps Taken Each Day (Imputed Data)")+ theme(axis.text.x = element_text(angle = 90, hjust = 2))
+```
+
+## Calculate  the mean and median total number of steps taken per day
+
+```{r, echo=TRUE}
+newmeanfreq <- as.integer(mean(aggregate(steps~date, imputedata, FUN = sum)$steps))
+newmeanfreq
+newmedianfreq <- median(aggregate(steps~date, imputedata, FUN = sum)$steps)
+newmedianfreq
+```
+*1 There is no diffrence between old meanFreq value and new meanfreq value.
+*2 There is .66 diffrence between old median value and new median value.
+
+
+# differences in activity patterns between weekdays and weekends
+
+```{r, echo=TRUE}
+weekDayEnd <- data.frame("dayType"=character(0))
+weekDayEnd <- NULL
+
+#Check wether the day is a weekday or weekend (Saturday)
+weekInd <- function(day){
+  if (weekdays(day)=="Saturday") {
+    out <- "Weekend" 
+  } else {
+    out <- "Weekday" 
+  }
+  out
+}
+
+for (i in 1:nrow(imputedata)){
+  date <- imputedata[i,c("date")]
+  newObs <- data.frame("dayType"= weekInd(as.Date(date)))
+  weekDayEnd <- rbind(weekDayEnd, newObs)
+}
+```
+
+#Add the day type column in the data set
+```{r, echo=TRUE}
+imputedata <- cbind(imputedata, weekDayEnd)
+averageWeekDayEnd<-aggregate(steps~interval + dayType, imputedata, FUN=mean)
+ggplot(averageWeekDayEnd,aes(interval,steps, color=dayType))+geom_line()+facet_wrap(~dayType, ncol=1)+xlab("5-min Interval")+ylab("Steps")+guides(fill=FALSE) 
+```
+
+
